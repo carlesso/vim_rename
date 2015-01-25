@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+
+require 'vim_rename'
+require 'optparse'
+require 'tempfile'
+require 'colored'
+
+options = {}
+options = VimRename::Optparse.parse(ARGV)
+
+target_file = Tempfile.new('vim_rename_target')
+original_file = if options.split
+                  Tempfile.new('vim_rename_original')
+                else
+                  nil
+                end
+
+files = []
+options.files.each do |file|
+  if File.exists? file
+    fd = VimRename::FileData.new(file)
+    target_file.write "#{fd.basename}\n"
+    original_file.write "#{fd.basename}\n" if original_file
+    files << fd
+  else
+    # Don't raise, just notice
+    STDERR.puts "cannot access #{file}: No such file or directory".red.bold
+  end
+end
+
+if files.empty?
+  STDERR.puts "No files left to rename"
+  exit 0
+end
+target_file.close
+original_file.close if original_file
+
+if options.vim_diff
+  puts "executing vimdiff #{target_file.path} #{original_file.path}" if options.verbose
+  system "vimdiff #{target_file.path} #{original_file.path}"
+elsif options.split
+  puts "executing vim -O2 #{target_file.path} #{original_file.path}" if options.verbose
+  system "vim -O2 #{target_file.path} #{original_file.path}"
+else
+  puts "executing vim #{target_file.path}" if options.verbose
+  system "vim #{target_file.path}"
+end
+
+new_names = File.readlines(target_file.path).map(&:chomp)
+if new_names.size != files.size
+  STDERR.puts "Wrong number of lines found in file... Aborting"
+  exit
+end
+
+puts "Going to move these files:" if options.confirm
+
+any_changes = false
+
+new_names.each_with_index do |new_name, i|
+  files[i].update new_name
+  any_changes ||= files[i].changed?
+  if options.confirm && files[i].changed?
+    puts "#{files[i].name} -> #{files[i].full_name}"
+  end
+end
+
+unless any_changes
+  puts "No changes to do... Bye"
+  exit
+end
+
+if options.confirm
+  exit unless VimRename.yes_no('Do you want to apply the changes?')
+end
+
+files.each do |f|
+  next unless f.changed?
+  if options.confirm_each
+    puts "#{f.name} -> #{f.full_name}"
+    f.rename! if VimRename.yes_no('Confirm?')
+  else
+    puts "#{f.name} -> #{f.full_name}" if options.verbose
+    f.rename!
+  end
+end
+
