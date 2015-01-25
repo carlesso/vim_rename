@@ -23,10 +23,10 @@ module VimRename
         opts.on('-c', '--confirm', "Asks for confirmation, showing the changes, before doing any action") do |split|
           options.confirm = true
         end
-        opts.on('-C', '--confirm-each', "Asks for confirmation before EACH action") do |split|
+        opts.on('-C', '--confirm-each', "Asks for confirmation before EACH action (will exclude --confirm) ") do |split|
           options.confirm_each = true
         end
-        opts.on('-d', '--diff', "Use vim-diff") do |split|
+        opts.on('-d', '--diff', "Use vimdiff (will exclude --split)") do |split|
           options.vim_diff = true
         end
         opts.on('-e', '--skip-extensions', "Skip extension from being displayed") do |split|
