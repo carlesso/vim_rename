@@ -26,7 +26,7 @@ module VimRename
     end
 
     def rename!
-      FileUtils.mv name, basename
+      FileUtils.mv name, full_name
     end
   end
 end
